@@ -24,7 +24,6 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 
 import com.unity3d.player.UnityPlayer;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -52,28 +51,28 @@ public class UnityNotificationManager extends BroadcastReceiver
         channel.setLightColor(lightColor);
         channel.enableVibration(enableVibration == 1);
         if (vibrationPattern == null)
-            vibrationPattern = new long[] { 1000L, 1000L };
+            vibrationPattern = new long[] { 0L, 250L };
         channel.setVibrationPattern(vibrationPattern);
         nm.createNotificationChannel(channel);
     }
 
     @TargetApi(24)
-    private static void createChannelIfNeeded(String identifier, String name, String soundName, boolean enableLights, boolean enableVibration, String bundle) {
+    private static void createChannelIfNeeded(String identifier, String name, String soundName, boolean enableLights, boolean enableVibration, long[] vibrationPattern, String bundle) {
         if (channels.contains(identifier))
             return;
         channels.add(identifier);
 
-        CreateChannel(identifier, name, identifier + " notifications", NotificationManager.IMPORTANCE_DEFAULT, soundName, enableLights ? 1 : 0, Color.GREEN, enableVibration ? 1 : 0, null, bundle);
+        CreateChannel(identifier, name, identifier + " notifications", NotificationManager.IMPORTANCE_DEFAULT, soundName, enableLights ? 1 : 0, Color.GREEN, enableVibration ? 1 : 0, vibrationPattern, bundle);
     }
 
-    public static void SetNotification(int id, long delayMs, String title, String message, String ticker, int sound, String soundName, int vibrate,
+    public static void SetNotification(int id, long delayMs, String title, String message, String ticker, int sound, String soundName, int vibrate, long[] vibrationPattern,
                                        int lights, String largeIconResource, String smallIconResource, int bgColor, String bundle, String channel,
                                        ArrayList<NotificationAction> actions)
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (channel == null)
                 channel = "default";
-            createChannelIfNeeded(channel, title, soundName, lights == 1, vibrate == 1, bundle);
+            createChannelIfNeeded(channel, title, soundName, lights == 1, vibrate == 1, vibrationPattern, bundle);
         }
 
         Activity currentActivity = UnityPlayer.currentActivity;
@@ -87,6 +86,7 @@ public class UnityNotificationManager extends BroadcastReceiver
         intent.putExtra("sound", sound == 1);
         intent.putExtra("soundName", soundName);
         intent.putExtra("vibrate", vibrate == 1);
+        intent.putExtra("vibrationPattern", vibrationPattern);
         intent.putExtra("lights", lights == 1);
         intent.putExtra("l_icon", largeIconResource);
         intent.putExtra("s_icon", smallIconResource);
@@ -101,13 +101,13 @@ public class UnityNotificationManager extends BroadcastReceiver
             am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + delayMs, PendingIntent.getBroadcast(currentActivity, id, intent, PendingIntent.FLAG_UPDATE_CURRENT));
     }
 
-    public static void SetRepeatingNotification(int id, long delayMs, String title, String message, String ticker, long rep, int sound, String soundName, int vibrate, int lights,
+    public static void SetRepeatingNotification(int id, long delayMs, String title, String message, String ticker, long rep, int sound, String soundName, int vibrate, long[] vibrationPattern, int lights,
                                                 String largeIconResource, String smallIconResource, int bgColor, String bundle, String channel, ArrayList<NotificationAction> actions)
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (channel == null)
                 channel = "default";
-            createChannelIfNeeded(channel, title, soundName, lights == 1, vibrate == 1, bundle);
+            createChannelIfNeeded(channel, title, soundName, lights == 1, vibrate == 1, vibrationPattern, bundle);
         }
 
         Activity currentActivity = UnityPlayer.currentActivity;
@@ -121,6 +121,7 @@ public class UnityNotificationManager extends BroadcastReceiver
         intent.putExtra("sound", sound == 1);
         intent.putExtra("soundName", soundName);
         intent.putExtra("vibrate", vibrate == 1);
+        intent.putExtra("vibrationPattern", vibrationPattern);
         intent.putExtra("lights", lights == 1);
         intent.putExtra("l_icon", largeIconResource);
         intent.putExtra("s_icon", smallIconResource);
@@ -146,6 +147,7 @@ public class UnityNotificationManager extends BroadcastReceiver
         Boolean sound = intent.getBooleanExtra("sound", false);
         String soundName = intent.getStringExtra("soundName");
         Boolean vibrate = intent.getBooleanExtra("vibrate", false);
+        long[] vibrationPattern = intent.getLongArrayExtra("vibrationPattern");
         Boolean lights = intent.getBooleanExtra("lights", false);
         int id = intent.getIntExtra("id", 0);
         String channel = intent.getStringExtra("channel");
@@ -153,6 +155,9 @@ public class UnityNotificationManager extends BroadcastReceiver
         ArrayList<NotificationAction> actions = null;
         if (b != null && b.containsKey("actions")) {
             actions = b.getParcelableArrayList("actions");
+        }
+        if (vibrationPattern == null) {
+            vibrationPattern = new long[] { 0L, 250L };
         }
 
         Resources res = context.getResources();
@@ -196,9 +201,7 @@ public class UnityNotificationManager extends BroadcastReceiver
         }
 
         if (vibrate)
-            builder.setVibrate(new long[] {
-                    1000L, 1000L
-            });
+            builder.setVibrate(vibrationPattern);
 
         if (lights)
             builder.setLights(Color.GREEN, 3000, 3000);
